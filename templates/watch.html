@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}{{ v.title }} - んょしtube{% endblock %}
+{% block head %}
+<style>
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px}
+@media(max-width:1000px){.wrap{grid-template-columns:1fr}}
+.player{position:relative;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden}
+.player iframe,.player video{width:100%;height:100%;border:0;display:block}
+h1.t{font-size:19px;margin:12px 0 6px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--dim);font-size:13px}
+.desc{background:var(--panel);border-radius:12px;padding:12px;margin:14px 0;font-size:13px;white-space:normal;max-height:220px;overflow:auto}
+.qual{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.qual button{background:#24242d;color:var(--fg);padding:5px 11px;font-size:12px}
+.qual button.on{background:var(--acc)}
+.cm{display:flex;gap:10px;margin:14px 0}
+.cm .av{width:32px;height:32px}
+.cm .b{flex:1;min-width:0}
+.cm .n{font-size:12.5px;color:var(--dim);font-weight:700}
+.cm .n .c{background:var(--acc);color:#fff;border-radius:4px;padding:0 5px;font-size:10px;margin-left:5px}
+.cm .x{font-size:13.5px;white-space:pre-wrap;word-break:break-word}
+.cm .f{font-size:12px;color:var(--dim);margin-top:4px}
+.side{display:flex;gap:10px;margin-bottom:14px}
+.side .th{width:150px;flex:none;aspect-ratio:16/9;border-radius:9px;overflow:hidden;background:#222}
+.side img{width:100%;height:100%;object-fit:cover}
+.side .i{min-width:0}
+.side .ttl{font-size:12.5px;margin:0}
+</style>
+{% endblock %}
+{% block content %}
+<div class="wrap">
+<div>
+  <div class="player">
+    <iframe id="frame" src="{{ nocookie }}?autoplay=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>
+    <video id="vid" controls playsinline style="display:none"></video>
+  </div>
+  <div class="qual" id="qual"></div>
+  <h1 class="t">{{ v.title }}</h1>
+  <div class="row">
+    {% if v.authorId %}<a href="/channel/{{ v.authorId }}" class="row" style="gap:8px">
+      {% if v.authorIcon %}<img class="av" src="{{ v.authorIcon }}" alt="">{% endif %}
+      <b>{{ v.author }}</b>
+    </a>{% else %}<b>{{ v.author }}</b>{% endif %}
+    <span>{{ v.subCount }} 登録者</span>
+    <span>{{ v.views }} 回視聴</span>
+    <span>{{ v.published }}</span>
+    <span id="src" class="pill">取得中…</span>
+  </div>
+  {% if v.description %}<div class="desc">{{ v.description|safe }}</div>{% endif %}
+
+  <h1 style="font-size:15px;margin-top:22px">コメント <span class="pill" id="cnum"></span></h1>
+  <div id="comments"></div>
+  <div style="text-align:center;margin:16px 0">
+    <button id="more" style="display:none">もっと見る</button>
+  </div>
+</div>
+
+<aside>
+  <h1 style="font-size:14px">関連動画</h1>
+  {% for r in v.related %}
+  <a class="side" href="/watch?v={{ r.videoId }}">
+    <div class="th"><img src="{{ r.thumb }}" loading="lazy" alt=""></div>
+    <div class="i"><div class="ttl">{{ r.title }}</div><div class="meta">{{ r.author }} · {{ r.views }}</div></div>
+  </a>
+  {% endfor %}
+</aside>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+const VID = {{ v.videoId|tojson }};
+const frame = document.getElementById('frame');
+const vid = document.getElementById('vid');
+const qual = document.getElementById('qual');
+const srcTag = document.getElementById('src');
+let audio = null;
+
+function attachAudio(url){
+  if(audio){ audio.pause(); audio = null; }
+  if(!url) return;
+  audio = new Audio('/proxy/stream?url=' + encodeURIComponent(url));
+  audio.preload = 'auto';
+  audio.currentTime = vid.currentTime;
+  audio.play().catch(()=>{});
+  vid.addEventListener('timeupdate', ()=>{
+    if(audio && Math.abs(audio.currentTime - vid.currentTime) > 0.35) audio.currentTime = vid.currentTime;
+  });
+  vid.addEventListener('play', ()=>audio && audio.play().catch(()=>{}));
+  vid.addEventListener('pause', ()=>audio && audio.pause());
+  vid.addEventListener('seeking', ()=>{ if(audio) audio.currentTime = vid.currentTime; });
+}
+
+function play(item){
+  frame.style.display = 'none';
+  vid.style.display = 'block';
+  vid.src = '/proxy/stream?url=' + encodeURIComponent(item.url);
+  attachAudio(item.audioUrl);
+  vid.play().catch(()=>{});
+}
+
+(async () => {
+  try{
+    const r = await fetch('/api/stream?v=' + encodeURIComponent(VID));
+    const d = await r.json();
+    const list = (d.streamUrls || []).filter(x => x.format !== 'mp4/videoOnly');
+    const vo = (d.streamUrls || []).filter(x => x.format === 'mp4/videoOnly');
+    const all = list.concat(vo);
+    srcTag.textContent = '取得元: ' + d.source;
+    if(!all.length){ srcTag.textContent = 'ストリーム取得失敗（埋め込みで再生）'; return; }
+    all.forEach((item, idx) => {
+      const b = document.createElement('button');
+      b.textContent = item.resolution + (item.format.includes('videoOnly') ? ' (映像のみ)' : '');
+      b.onclick = () => {
+        [...qual.children].forEach(c => c.classList.remove('on'));
+        b.classList.add('on');
+        play(item);
+      };
+      qual.appendChild(b);
+    });
+  }catch(e){ srcTag.textContent = 'ストリーム取得失敗'; }
+})();
+
+let cont = {{ continuation|tojson }};
+let loaded = 0;
+
+function esc(s){ const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+function render(c){
+  const div = document.createElement('div');
+  div.className = 'cm';
+  div.innerHTML = '<img class="av" src="' + esc(c.icon) + '" alt="">' +
+    '<div class="b"><div class="n">' + esc(c.author) +
+    (c.creator ? '<span class="c">投稿者</span>' : '') +
+    '</div><div class="x">' + esc(c.text) + '</div>' +
+    '<div class="f">' + esc(c.published) + (c.likes && c.likes !== '0' ? ' · 👍 ' + esc(c.likes) : '') +
+    (c.replies ? ' · 返信 ' + c.replies : '') + '</div></div>';
+  return div;
+}
+
+async function load(){
+  const r = await fetch('/api/comments?v=' + encodeURIComponent(VID) +
+    (cont ? '&continuation=' + encodeURIComponent(cont) : ''));
+  const d = await r.json();
+  const box = document.getElementById('comments');
+  (d.comments || []).forEach(c => { box.appendChild(render(c)); loaded++; });
+  cont = d.continuation || '';
+  document.getElementById('cnum').textContent = loaded + ' 件';
+  document.getElementById('more').style.display = cont ? 'inline-block' : 'none';
+}
+
+document.getElementById('more').onclick = load;
+load();
+</script>
+{% endblock %}
