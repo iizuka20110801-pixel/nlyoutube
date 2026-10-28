@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}んょしtube{% endblock %}
+{% block content %}
+<h1>{% if type %}{{ type }} の急上昇{% else %}急上昇{% endif %}</h1>
+{% if videos %}
+<div class="grid">
+  {% for i in videos %}
+  <a class="card" href="/watch?v={{ i.videoId }}">
+    <div class="thumb"><img src="{{ i.thumb }}" loading="lazy" alt=""><span class="dur">{{ i.duration }}</span></div>
+    <div class="ttl">{{ i.title }}</div>
+    <div class="meta"><span>{{ i.author }}</span><span>· {{ i.views }}</span></div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<p class="pill">取得できませんでした。少し待って再読み込みしてください。</p>
+{% endif %}
+{% endblock %}
