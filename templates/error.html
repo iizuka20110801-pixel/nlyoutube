@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}取得失敗 - んょしtube{% endblock %}
+{% block content %}
+<h1>取得できませんでした</h1>
+<p class="pill">インスタンスが混雑しています。数秒後に再読み込みしてください。</p>
+{% if v %}<p style="margin-top:14px"><a class="pill" href="/watch?v={{ v }}">再試行</a></p>{% endif %}
+<p style="margin-top:14px"><a class="pill" href="/">ホームへ</a></p>
+{% endblock %}
