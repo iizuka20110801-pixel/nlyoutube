@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ q }} - んょしtube{% endblock %}
+{% block content %}
+<h1>「{{ q }}」の検索結果</h1>
+<div class="meta" style="margin-bottom:14px">
+  <a class="pill" href="/search?q={{ q|urlencode }}&type=video">動画</a>
+  <a class="pill" href="/search?q={{ q|urlencode }}&type=channel">チャンネル</a>
+  <a class="pill" href="/search?q={{ q|urlencode }}&type=playlist">再生リスト</a>
+</div>
+{% if results %}
+<div class="grid">
+  {% for i in results %}
+  {% if i.type == 'channel' %}
+  <a class="card" href="/channel/{{ i.authorId }}">
+    <div class="thumb"><img src="{{ i.channelThumb }}" loading="lazy" alt=""></div>
+    <div class="ttl">{{ i.title }}</div>
+    <div class="meta"><span>{{ i.subCount }} 登録者</span></div>
+  </a>
+  {% elif i.playlistId and not i.videoId %}
+  <a class="card" href="/playlist?list={{ i.playlistId }}">
+    <div class="thumb"><img src="{{ i.thumb }}" loading="lazy" alt=""></div>
+    <div class="ttl">{{ i.title }}</div>
+    <div class="meta"><span>再生リスト · {{ i.videoCount }} 本</span></div>
+  </a>
+  {% else %}
+  <a class="card" href="/watch?v={{ i.videoId }}">
+    <div class="thumb"><img src="{{ i.thumb }}" loading="lazy" alt=""><span class="dur">{{ i.duration }}</span></div>
+    <div class="ttl">{{ i.title }}</div>
+    <div class="meta">
+      {% if i.authorId %}<a href="/channel/{{ i.authorId }}">{{ i.author }}</a>{% else %}<span>{{ i.author }}</span>{% endif %}
+      <span>· {{ i.views }}</span><span>{{ i.published }}</span>
+    </div>
+  </a>
+  {% endif %}
+  {% endfor %}
+</div>
+<div class="meta" style="justify-content:center;margin-top:24px">
+  {% if page > 1 %}<a class="pill" href="/search?q={{ q|urlencode }}&type={{ type }}&page={{ page - 1 }}">前へ</a>{% endif %}
+  <span class="pill">{{ page }} ページ</span>
+  {% if results|length >= 10 %}<a class="pill" href="/search?q={{ q|urlencode }}&type={{ type }}&page={{ page + 1 }}">次へ</a>{% endif %}
+</div>
+{% else %}
+<p class="pill">ヒットしませんでした。</p>
+{% endif %}
+{% endblock %}
