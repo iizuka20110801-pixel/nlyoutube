@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ pl.title }} - んょしtube{% endblock %}
+{% block content %}
+<h1>{{ pl.title }}</h1>
+<div class="meta" style="margin-bottom:14px"><span>{{ pl.author }}</span><span>{{ pl.videos|length }} 本</span></div>
+<div class="grid">
+  {% for i in pl.videos %}
+  <a class="card" href="/watch?v={{ i.videoId }}&list={{ pl.id }}">
+    <div class="thumb"><img src="{{ i.thumb }}" loading="lazy" alt=""><span class="dur">{{ i.duration }}</span></div>
+    <div class="ttl">{{ i.title }}</div>
+    <div class="meta"><span>{{ i.author }}</span></div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}
